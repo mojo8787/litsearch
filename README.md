@@ -2,7 +2,7 @@
 
 > Search 4 academic APIs simultaneously, auto-deduplicate, and generate Vancouver citations. No server, no API keys, runs entirely in the browser.
 
-**[🔍 Live Demo →](https://YOUR-USERNAME.github.io/litsearch)**
+**[🔍 Live Demo →](https://mojo8787.github.io/litsearch)**
 
 ---
 
@@ -58,7 +58,7 @@ This is a single static HTML file. To deploy:
 1. Fork or clone this repo
 2. Rename `lit_search_ui.html` → `index.html` (already done)
 3. Enable GitHub Pages: **Settings → Pages → Source: main branch / root**
-4. Your site will be live at `https://YOUR-USERNAME.github.io/litsearch`
+4. Your site will be live at `https://mojo8787.github.io/litsearch`
 
 ## License
 
