@@ -598,6 +598,132 @@
   }
   .modal-close:hover { color: var(--text); }
 
+  /* ── PICO BUILDER ── */
+  .pico-toggle-btn {
+    background: none;
+    border: 1px dashed var(--border-lit);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.2s;
+  }
+  .pico-toggle-btn:hover, .pico-toggle-btn.open {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .pico-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 12px auto 0;
+    max-width: 700px;
+    animation: fadeUp 0.25s ease both;
+  }
+  .pico-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .pico-field { display: flex; flex-direction: column; gap: 5px; }
+  .pico-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+  }
+  .pico-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .pico-input:focus { border-color: var(--amber); }
+  .pico-input::placeholder { color: var(--text-muted); font-style: italic; }
+  .pico-preview {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--teal);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 12px;
+    min-height: 32px;
+    word-break: break-all;
+    display: none;
+  }
+  .pico-preview.visible { display: block; }
+
+  /* ── SEARCH HISTORY ── */
+  .history-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+  #history-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+  .history-chip {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-lit);
+    color: var(--text-dim);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-chip:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+
+  /* ── ABSTRACT HOVER PREVIEW ── */
+  .paper-card { position: relative; }
+  .abstract-hover {
+    display: none;
+    position: absolute;
+    left: 0; right: 0;
+    top: calc(100% + 6px);
+    background: var(--surface2);
+    border: 1px solid var(--border-lit);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.65;
+    font-weight: 300;
+    z-index: 50;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    animation: fadeUp 0.15s ease both;
+  }
+  .paper-card:hover .abstract-hover { display: block; }
+
+  @media (max-width: 700px) {
+    .pico-grid { grid-template-columns: 1fr; }
+    .abstract-hover { display: none !important; }
+  }
+
   @media (max-width: 700px) {
     header { padding: 18px 20px 0; }
     main { padding: 28px 16px 60px; }
@@ -622,6 +748,7 @@
     <span class="badge">OpenAlex</span>
     <span class="badge">CrossRef</span>
     <span class="badge">Europe PMC</span>
+    <span class="badge">bioRxiv</span>
   </div>
 </header>
 
@@ -631,12 +758,18 @@
   <!-- ── SEARCH HERO ── -->
   <div class="search-hero">
     <h1>Literature Discovery</h1>
-    <p>Search across <span>5 academic APIs</span> · Auto-deduplicate · Vancouver citations</p>
+    <p>Search across <span>6 academic APIs</span> · Preprints · Auto-deduplicate · Vancouver citations</p>
 
     <div class="tabs">
       <button class="tab-btn active" onclick="setMode('search')">Keyword Search</button>
       <button class="tab-btn" onclick="setMode('doi')">DOI Lookup</button>
       <button class="tab-btn" onclick="setMode('pmid')">PMID Lookup</button>
+    </div>
+
+    <!-- ── SEARCH HISTORY ── -->
+    <div id="history-row" style="display:none; margin-bottom:10px;">
+      <div class="history-label">Recent searches</div>
+      <div id="history-chips"></div>
     </div>
 
     <div class="search-box">
@@ -646,10 +779,39 @@
         type="text"
         placeholder="e.g. wastewater epidemiology pathogen detection solids…"
         onkeydown="if(event.key==='Enter') doSearch()"
+        oninput="onQueryInput()"
         autocomplete="off"
         spellcheck="false"
       />
       <button class="search-btn" id="search-btn" onclick="doSearch()">Search</button>
+    </div>
+
+    <!-- ── PICO BUILDER ── -->
+    <div style="margin-top:10px; display:flex; justify-content:center;">
+      <button class="pico-toggle-btn" onclick="togglePICO()" id="pico-toggle-btn">
+        ⊕ PICO Query Builder
+      </button>
+    </div>
+    <div id="pico-panel" class="pico-panel" style="display:none;">
+      <div class="pico-grid">
+        <div class="pico-field">
+          <label class="pico-label">P — Population / Problem</label>
+          <input class="pico-input" id="pico-p" placeholder="e.g. wastewater, COVID-19 patients" oninput="buildPICO()" />
+        </div>
+        <div class="pico-field">
+          <label class="pico-label">I — Intervention / Exposure</label>
+          <input class="pico-input" id="pico-i" placeholder="e.g. qPCR detection, nanoparticles" oninput="buildPICO()" />
+        </div>
+        <div class="pico-field">
+          <label class="pico-label">C — Comparison (optional)</label>
+          <input class="pico-input" id="pico-c" placeholder="e.g. ddPCR, culture methods" oninput="buildPICO()" />
+        </div>
+        <div class="pico-field">
+          <label class="pico-label">O — Outcome</label>
+          <input class="pico-input" id="pico-o" placeholder="e.g. sensitivity, antimicrobial activity" oninput="buildPICO()" />
+        </div>
+      </div>
+      <div class="pico-preview" id="pico-preview"></div>
     </div>
 
     <div class="search-options" id="search-options">
@@ -658,6 +820,7 @@
       <label class="option-label"><input type="checkbox" id="chk-oa" checked> OpenAlex</label>
       <label class="option-label"><input type="checkbox" id="chk-cr" checked> CrossRef</label>
       <label class="option-label"><input type="checkbox" id="chk-epmc" checked> Europe PMC</label>
+      <label class="option-label"><input type="checkbox" id="chk-biorxiv" checked> bioRxiv/medRxiv</label>
       <select class="limit-select" id="limit-select">
         <option value="5">5 per API</option>
         <option value="10" selected>10 per API</option>
@@ -676,6 +839,7 @@
       <span class="api-pill" id="pill-oa">OA</span>
       <span class="api-pill" id="pill-cr">CR</span>
       <span class="api-pill" id="pill-epmc">EPMC</span>
+      <span class="api-pill" id="pill-biorxiv">RXV</span>
     </div>
   </div>
 
@@ -690,6 +854,7 @@
       </div>
       <button class="action-btn" onclick="openExport('ris')">↓ RIS</button>
       <button class="action-btn" onclick="openExport('bib')">↓ BibTeX</button>
+      <button class="action-btn" onclick="copyForWord()">📄 Word</button>
       <button class="action-btn primary" onclick="copyAllVancouver()">⎘ Copy All</button>
     </div>
   </div>
@@ -732,6 +897,104 @@
 let allPapers = [];
 let currentMode = 'search';
 let exportType = 'ris';
+let searchHistory = []; // in-memory, max 10
+
+// ─────────────────────────────────────────────
+// PICO QUERY BUILDER
+// ─────────────────────────────────────────────
+function togglePICO() {
+  const panel = document.getElementById('pico-panel');
+  const btn = document.getElementById('pico-toggle-btn');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+  btn.textContent = open ? '⊖ PICO Query Builder' : '⊕ PICO Query Builder';
+}
+
+function buildPICO() {
+  const p = document.getElementById('pico-p').value.trim();
+  const i = document.getElementById('pico-i').value.trim();
+  const c = document.getElementById('pico-c').value.trim();
+  const o = document.getElementById('pico-o').value.trim();
+  const parts = [p, i, c, o].filter(Boolean);
+  const preview = document.getElementById('pico-preview');
+  if (!parts.length) { preview.classList.remove('visible'); return; }
+  const query = parts.join(' AND ');
+  preview.textContent = '→ ' + query;
+  preview.classList.add('visible');
+  document.getElementById('search-input').value = query;
+}
+
+// ─────────────────────────────────────────────
+// SEARCH HISTORY
+// ─────────────────────────────────────────────
+function addToHistory(query) {
+  if (!query || query.length < 3) return;
+  searchHistory = [query, ...searchHistory.filter(q => q !== query)].slice(0, 10);
+  renderHistory();
+}
+
+function renderHistory() {
+  const row = document.getElementById('history-row');
+  const chips = document.getElementById('history-chips');
+  if (!searchHistory.length) { row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  chips.innerHTML = searchHistory.map(q =>
+    `<span class="history-chip" onclick="useHistory('${q.replace(/'/g,"\\'")}')">↺ ${q}</span>`
+  ).join('');
+}
+
+function useHistory(query) {
+  document.getElementById('search-input').value = query;
+  doSearch();
+}
+
+function onQueryInput() {
+  // Clear PICO fields if user types manually
+  const val = document.getElementById('search-input').value;
+  if (!val) document.getElementById('pico-preview').classList.remove('visible');
+}
+
+// ─────────────────────────────────────────────
+// BIORXIV / MEDRXIV
+// ─────────────────────────────────────────────
+async function fetchBioRxiv(query, limit) {
+  // bioRxiv API: search by free text, returns preprints
+  const terms = query.trim().split(/\s+/).slice(0, 8).join('+');
+  const data = await apiFetch(`https://api.biorxiv.org/details/biorxiv/2018-01-01/2099-01-01/0/json`);
+  // bioRxiv doesn't have a proper search endpoint — use their text search via CORS-friendly method
+  // Fall back to Europe PMC preprint search which indexes bioRxiv/medRxiv
+  const pmcData = await apiFetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search', {
+    query: `(${query}) AND (SRC:PPR OR SRC:BIORXIV OR SRC:MEDRXIV)`,
+    resultType: 'core',
+    pageSize: limit,
+    format: 'json',
+    sort: 'CITED desc'
+  });
+  return (pmcData?.resultList?.result || []).map(item => ({
+    ...parseEPMC(item),
+    source: 'RXV',
+    isPreprint: true
+  }));
+}
+
+// ─────────────────────────────────────────────
+// COPY FOR WORD
+// ─────────────────────────────────────────────
+async function copyForWord() {
+  // Plain numbered list, no markdown, pastes cleanly into Word
+  const text = allPapers.map((p, i) => vancouver(p, i+1)).join('\n\n');
+  await navigator.clipboard.writeText(text);
+  // Flash the button
+  const btn = [...document.querySelectorAll('.action-btn')].find(b => b.textContent.includes('Word'));
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.borderColor = 'var(--teal)';
+    btn.style.color = 'var(--teal)';
+    setTimeout(() => { btn.textContent = orig; btn.style.borderColor = ''; btn.style.color = ''; }, 1800);
+  }
+}
 
 // ─────────────────────────────────────────────
 // MODE
@@ -778,6 +1041,9 @@ async function doSearch() {
   const query = document.getElementById('search-input').value.trim();
   if (!query) return;
 
+  // Add to history
+  if (currentMode === 'search') addToHistory(query);
+
   allPapers = [];
   showStatus(true);
   document.getElementById('results-container').innerHTML = '';
@@ -785,7 +1051,7 @@ async function doSearch() {
   document.getElementById('vancouver-panel').classList.remove('visible');
   document.getElementById('search-btn').disabled = true;
 
-  setPill('ss',''); setPill('pm',''); setPill('oa',''); setPill('cr',''); setPill('epmc','');
+  setPill('ss',''); setPill('pm',''); setPill('oa',''); setPill('cr',''); setPill('epmc',''); setPill('biorxiv','');
 
   try {
     if (currentMode === 'doi') {
@@ -1124,6 +1390,7 @@ async function searchAll(query) {
     oa: document.getElementById('chk-oa').checked,
     cr: document.getElementById('chk-cr').checked,
     epmc: document.getElementById('chk-epmc').checked,
+    biorxiv: document.getElementById('chk-biorxiv').checked,
   };
 
   const tasks = [];
@@ -1133,6 +1400,7 @@ async function searchAll(query) {
   // CrossRef gets 3× limit since it has high noise — we filter aggressively
   if (useAPIs.cr) tasks.push({ id:'cr', fn: ()=>fetchCR(query, Math.min(limit * 3, 60)) });
   if (useAPIs.epmc) tasks.push({ id:'epmc', fn: ()=>fetchEPMC(query, limit) });
+  if (useAPIs.biorxiv) tasks.push({ id:'biorxiv', fn: ()=>fetchBioRxiv(query, limit) });
 
   tasks.forEach(t => setPill(t.id, 'loading'));
   setStatus(`Querying <em>${tasks.length} APIs</em>…`);
@@ -1309,7 +1577,11 @@ function renderResults() {
       ? `<div class="abstract-text" id="abs-${i}">${p.abstract}</div>`
       : '';
     const absBtn = p.abstract
-      ? `<button class="icon-btn" title="Abstract" onclick="toggleAbstract(${i})">¶</button>` : '';
+      ? `<button class="icon-btn" title="Toggle abstract" onclick="toggleAbstract(${i})">¶</button>` : '';
+    const preprintBadge = p.isPreprint
+      ? `<span class="meta-chip" style="background:rgba(251,146,60,0.12);color:#fb923c;border:1px solid rgba(251,146,60,0.3)">PREPRINT</span>` : '';
+    const hoverAbstract = p.abstract
+      ? `<div class="abstract-hover"><strong style="color:var(--text);font-size:0.72rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.06em">Abstract</strong><br><br>${p.abstract.slice(0,400)}${p.abstract.length > 400 ? '…' : ''}</div>` : '';
 
     return `
     <div class="paper-card" style="animation-delay:${i*0.04}s">
@@ -1322,17 +1594,19 @@ function renderResults() {
             ${p.year ? `<span class="meta-chip meta-year">${p.year}</span>` : ''}
             ${p.doi ? `<span class="meta-chip meta-doi">DOI</span>` : ''}
             ${src}
+            ${preprintBadge}
           </div>
         </div>
         <div class="card-actions">
           ${absBtn}
           <button class="icon-btn" title="Copy Vancouver" onclick="copyCite(this, ${i})">⎘</button>
-          ${p.pdfUrl ? `<a href="${String(p.pdfUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener" style="text-decoration:none"><button class="icon-btn" title="Free PDF">PDF</button></a>` : ''}
+          ${p.pdfUrl ? `<a href="${String(p.pdfUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener" style="text-decoration:none"><button class="icon-btn" title="Free PDF" style="color:var(--teal);border-color:var(--teal)">PDF</button></a>` : ''}
           ${p.doi ? `<a href="https://doi.org/${p.doi}" target="_blank" style="text-decoration:none"><button class="icon-btn" title="Open DOI">↗</button></a>` : ''}
         </div>
       </div>
       <div class="vancouver-cite">${cite}</div>
       ${abstract}
+      ${hoverAbstract}
     </div>`;
   }).join('');
 
