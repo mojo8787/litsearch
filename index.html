@@ -4,10 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>LitSearch — Literature Discovery Tool</title>
-<meta name="description" content="Search Semantic Scholar, PubMed, OpenAlex and CrossRef simultaneously. Auto-deduplicate results and generate Vancouver citations. Free, no API key needed." />
+<meta name="description" content="Search Semantic Scholar, PubMed, OpenAlex, CrossRef and Europe PMC simultaneously. Auto-deduplicate, free PDF links via Unpaywall, Vancouver citations. Free, no API key needed." />
 <meta name="author" content="LitSearch" />
 <meta property="og:title" content="LitSearch — Literature Discovery Tool" />
-<meta property="og:description" content="Search 4 academic APIs simultaneously. Auto-deduplicate and generate Vancouver citations. Free, no key needed." />
+<meta property="og:description" content="Search 5 academic APIs simultaneously. Auto-deduplicate, free PDF links, Vancouver citations. Free, no key needed." />
 <meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -621,6 +621,7 @@
     <span class="badge">PubMed</span>
     <span class="badge">OpenAlex</span>
     <span class="badge">CrossRef</span>
+    <span class="badge">Europe PMC</span>
   </div>
 </header>
 
@@ -630,7 +631,7 @@
   <!-- ── SEARCH HERO ── -->
   <div class="search-hero">
     <h1>Literature Discovery</h1>
-    <p>Search across <span>4 academic APIs</span> · Auto-deduplicate · Vancouver citations</p>
+    <p>Search across <span>5 academic APIs</span> · Auto-deduplicate · Vancouver citations</p>
 
     <div class="tabs">
       <button class="tab-btn active" onclick="setMode('search')">Keyword Search</button>
@@ -656,6 +657,7 @@
       <label class="option-label"><input type="checkbox" id="chk-pm" checked> PubMed</label>
       <label class="option-label"><input type="checkbox" id="chk-oa" checked> OpenAlex</label>
       <label class="option-label"><input type="checkbox" id="chk-cr" checked> CrossRef</label>
+      <label class="option-label"><input type="checkbox" id="chk-epmc" checked> Europe PMC</label>
       <select class="limit-select" id="limit-select">
         <option value="5">5 per API</option>
         <option value="10" selected>10 per API</option>
@@ -673,6 +675,7 @@
       <span class="api-pill" id="pill-pm">PM</span>
       <span class="api-pill" id="pill-oa">OA</span>
       <span class="api-pill" id="pill-cr">CR</span>
+      <span class="api-pill" id="pill-epmc">EPMC</span>
     </div>
   </div>
 
@@ -703,7 +706,7 @@
 </main>
 
 <footer>
-  <span>LitSearch · 4-API Literature Discovery</span>
+  <span>LitSearch · 5-API Literature Discovery</span>
   <span>No key required · All queries client-side</span>
 </footer>
 
@@ -782,7 +785,7 @@ async function doSearch() {
   document.getElementById('vancouver-panel').classList.remove('visible');
   document.getElementById('search-btn').disabled = true;
 
-  setPill('ss',''); setPill('pm',''); setPill('oa',''); setPill('cr','');
+  setPill('ss',''); setPill('pm',''); setPill('oa',''); setPill('cr',''); setPill('epmc','');
 
   try {
     if (currentMode === 'doi') {
@@ -792,6 +795,7 @@ async function doSearch() {
     } else {
       await searchAll(query);
     }
+    await enrichUnpaywall();
   } catch(e) {
     console.error(e);
   }
@@ -981,6 +985,66 @@ function parseCR(item) {
 }
 
 // ─────────────────────────────────────────────
+// EUROPE PMC
+// ─────────────────────────────────────────────
+async function fetchEPMC(query, limit) {
+  const data = await apiFetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search', {
+    query,
+    resultType: 'core',
+    pageSize: limit,
+    format: 'json'
+  });
+  const results = data.resultList?.result || [];
+  return results.map(parseEPMC);
+}
+async function fetchEPMC_DOI(doi) {
+  const data = await apiFetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search', {
+    query: `DOI:${doi}`,
+    resultType: 'core',
+    pageSize: 1,
+    format: 'json'
+  });
+  const results = data.resultList?.result || [];
+  return results.length ? parseEPMC(results[0]) : null;
+}
+function parseEPMC(item) {
+  const authorString = item.authorString || '';
+  const authors = authorString ? authorString.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const ji = item.journalInfo || {};
+  let doi = (item.doi || '').trim();
+  if (doi.startsWith('https://')) doi = doi.replace(/^https?:\/\/doi\.org\//i, '');
+  return {
+    title: item.title || '',
+    authors,
+    year: item.pubYear ? parseInt(item.pubYear, 10) : null,
+    journal: item.journalTitle || ji.journal?.title || '',
+    volume: ji.volume || '',
+    issue: ji.issue || '',
+    pages: ji.page || '',
+    doi,
+    pmid: item.pmid || '',
+    abstract: item.abstractText || '',
+    source: 'EPMC'
+  };
+}
+
+// ─────────────────────────────────────────────
+// UNPAYWALL (enrichment: free PDF link by DOI)
+// ─────────────────────────────────────────────
+const UNPAYWALL_EMAIL = 'litsearch@users.noreply.github.com';
+async function fetchUnpaywall(doi) {
+  try {
+    const url = `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(UNPAYWALL_EMAIL)}`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'LitSearchUI/1.0' } });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.best_oa_location?.url_for_pdf || data.url_for_pdf || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────
 // QUALITY FILTER
 // ─────────────────────────────────────────────
 const JUNK_TITLES = new Set([
@@ -1059,6 +1123,7 @@ async function searchAll(query) {
     pm: document.getElementById('chk-pm').checked,
     oa: document.getElementById('chk-oa').checked,
     cr: document.getElementById('chk-cr').checked,
+    epmc: document.getElementById('chk-epmc').checked,
   };
 
   const tasks = [];
@@ -1067,6 +1132,7 @@ async function searchAll(query) {
   if (useAPIs.oa) tasks.push({ id:'oa', fn: ()=>fetchOA(query, limit) });
   // CrossRef gets 3× limit since it has high noise — we filter aggressively
   if (useAPIs.cr) tasks.push({ id:'cr', fn: ()=>fetchCR(query, Math.min(limit * 3, 60)) });
+  if (useAPIs.epmc) tasks.push({ id:'epmc', fn: ()=>fetchEPMC(query, limit) });
 
   tasks.forEach(t => setPill(t.id, 'loading'));
   setStatus(`Querying <em>${tasks.length} APIs</em>…`);
@@ -1097,6 +1163,7 @@ async function lookupDOI(doi) {
     { id:'ss', fn: ()=>fetchSS_DOI(doiClean) },
     { id:'oa', fn: ()=>fetchOA_DOI(doiClean) },
     { id:'cr', fn: ()=>fetchCR_DOI(doiClean) },
+    { id:'epmc', fn: ()=>fetchEPMC_DOI(doiClean) },
   ];
   setPill('pm', 'done'); // PM not used for DOI directly
   tasks.forEach(t => setPill(t.id, 'loading'));
@@ -1116,14 +1183,14 @@ async function lookupDOI(doi) {
 }
 
 async function lookupPMID(pmid) {
-  setPill('ss',''); setPill('oa',''); setPill('cr',''); setPill('pm','loading');
+  setPill('ss',''); setPill('oa',''); setPill('cr',''); setPill('epmc',''); setPill('pm','loading');
   setStatus(`Looking up PMID <em>${pmid}</em>…`);
   try {
     const paper = await fetchPM_PMID(pmid);
     setPill('pm','done');
     if (paper) {
       if (paper.doi) {
-        setPill('ss','loading'); setPill('oa','loading'); setPill('cr','loading');
+        setPill('ss','loading'); setPill('oa','loading'); setPill('cr','loading'); setPill('epmc','loading');
         await lookupDOI(paper.doi);
         // merge pmid back in
         allPapers.forEach(p => { if(!p.pmid) p.pmid = pmid; });
@@ -1132,6 +1199,25 @@ async function lookupPMID(pmid) {
       }
     }
   } catch(e) { setPill('pm','error'); }
+}
+
+// ─────────────────────────────────────────────
+// UNPAYWALL ENRICHMENT
+// ─────────────────────────────────────────────
+const UNPAYWALL_CONCURRENCY = 10;
+async function enrichUnpaywall() {
+  if (!allPapers.length) return;
+  const dois = [...new Set(allPapers.map(p => p.doi).filter(Boolean))];
+  if (!dois.length) return;
+  const pdfByDoi = new Map();
+  for (let i = 0; i < dois.length; i += UNPAYWALL_CONCURRENCY) {
+    const batch = dois.slice(i, i + UNPAYWALL_CONCURRENCY);
+    const results = await Promise.all(batch.map(doi => fetchUnpaywall(doi)));
+    batch.forEach((doi, j) => { if (results[j]) pdfByDoi.set(doi.toLowerCase(), results[j]); });
+  }
+  allPapers.forEach(p => {
+    if (p.doi && pdfByDoi.has(p.doi.toLowerCase())) p.pdfUrl = pdfByDoi.get(p.doi.toLowerCase());
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -1154,6 +1240,7 @@ function mergePapers(a, b) {
     doi: pick(a.doi, b.doi),
     pmid: pick(a.pmid, b.pmid),
     abstract: pick(a.abstract, b.abstract),
+    pdfUrl: pick(a.pdfUrl, b.pdfUrl),
     source: [...new Set([...(a.source?.split('+')||[]), ...(b.source?.split('+')||[])])].join('+')
   };
 }
@@ -1240,6 +1327,7 @@ function renderResults() {
         <div class="card-actions">
           ${absBtn}
           <button class="icon-btn" title="Copy Vancouver" onclick="copyCite(this, ${i})">⎘</button>
+          ${p.pdfUrl ? `<a href="${String(p.pdfUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener" style="text-decoration:none"><button class="icon-btn" title="Free PDF">PDF</button></a>` : ''}
           ${p.doi ? `<a href="https://doi.org/${p.doi}" target="_blank" style="text-decoration:none"><button class="icon-btn" title="Open DOI">↗</button></a>` : ''}
         </div>
       </div>

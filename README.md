@@ -1,6 +1,6 @@
 # LitSearch — Literature Discovery Tool
 
-> Search 4 academic APIs simultaneously, auto-deduplicate, and generate Vancouver citations. No server, no API keys, runs entirely in the browser.
+> Search 5 academic APIs simultaneously, auto-deduplicate, get free PDF links via Unpaywall, and generate Vancouver citations. No server, no API keys, runs entirely in the browser.
 
 **[🔍 Live Demo →](https://mojo8787.github.io/litsearch)**
 
@@ -8,7 +8,8 @@
 
 ## Features
 
-- **4 APIs in parallel** — Semantic Scholar, PubMed E-utilities, OpenAlex, CrossRef
+- **5 APIs in parallel** — Semantic Scholar, PubMed E-utilities, OpenAlex, CrossRef, Europe PMC
+- **Free PDF links** — Unpaywall enriches results with legal open-access PDF links when available
 - **3 search modes** — Keyword search, DOI lookup, PMID lookup
 - **Smart deduplication** — same paper from multiple APIs is merged into one enriched record
 - **Quality filtering** — removes journal covers, retractions, acknowledgement pages, and other CrossRef noise
@@ -25,7 +26,7 @@ Open `index.html` in any modern browser — or visit the live site above.
 Type your query and hit Search. All checked APIs are queried in parallel. Results appear ranked by relevance.
 
 ### DOI Lookup
-Switch to the **DOI Lookup** tab and paste a DOI (e.g. `10.1016/j.watres.2023.120123`). Queries Semantic Scholar, OpenAlex, and CrossRef to build the richest possible record.
+Switch to the **DOI Lookup** tab and paste a DOI (e.g. `10.1016/j.watres.2023.120123`). Queries Semantic Scholar, OpenAlex, CrossRef, and Europe PMC to build the richest possible record. Unpaywall adds a free PDF link when available.
 
 ### PMID Lookup
 Switch to the **PMID Lookup** tab and enter a PubMed ID. Fetches from PubMed then enriches via DOI lookup.
@@ -48,6 +49,8 @@ Switch to the **PMID Lookup** tab and enter a PubMed ID. Fetches from PubMed the
 | PubMed E-utilities | `eutils.ncbi.nlm.nih.gov` | None |
 | OpenAlex | `api.openalex.org` | None (polite pool) |
 | CrossRef | `api.crossref.org` | None (polite pool) |
+| Europe PMC | `www.ebi.ac.uk/europepmc/webservices/rest` | None |
+| Unpaywall | `api.unpaywall.org` | Email param (enrichment only: free PDF links by DOI) |
 
 All requests are made client-side directly from the browser. No data is sent to any backend.
 
